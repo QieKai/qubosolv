@@ -87,14 +87,14 @@ main (int argc, char **argv)
               sl = sl + (int)vals[i*k+j] * (j+1);
           }
         }
-        // for (int i = 0; i < n; i++)
-        //   cout <<(int)vals[i] <<" ";
-
-        env.out() << "Solution status = " << cplex.getStatus() << endl;
-        cout << "Solution value  = " << sl << endl;
 
 
-        env.out() << "Values        = " << vals << endl;
+      //  env.out() << "Solution status = " << cplex.getStatus() << endl;
+        cout << sl << endl;
+        for (int i = 0; i < n; i++)
+          cout <<(int)vals[i] <<" ";
+
+        //env.out() << "Values        = " << vals << endl;
         //env.out() << "Reduced Costs = " << vals << endl;
     }
     catch (IloException& e) {
