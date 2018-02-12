@@ -1,5 +1,0 @@
-best known minimum and minimizer from heuristic is: -8026.74
-34750879 nodes have been explored
-Find optimal solution -> -10923.3
- 0 1 1 1 1 1 1 0 1 1 1 1 1 0 1 1 0 0 1 1 0 1 1 0 1 1 0 0 1 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1
-Time used:6599 seconds

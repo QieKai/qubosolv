@@ -1,85 +1,124 @@
-// -------------------------------------------------------------- -*- C++ -*-
-// File: ilolpex1.cpp
-// Version 12.7.0
-// --------------------------------------------------------------------------
-// Licensed Materials - Property of IBM
-// 5725-A06 5725-A29 5724-Y48 5724-Y49 5724-Y54 5724-Y55 5655-Y21
-// Copyright IBM Corporation 2000, 2016. All Rights Reserved.
-//
-// US Government Users Restricted Rights - Use, duplication or
-// disclosure restricted by GSA ADP Schedule Contract with
-// IBM Corp.
-// --------------------------------------------------------------------------
-
-
 #include <ilcplex/ilocplex.h>
+#include <iostream>
+#include <fstream>
+
 ILOSTLBEGIN
-int
-main (int argc, char **argv)
+
+bool find_all_sol=false;
+void read_qubo(int &n, double **Q);
+
+int main (int argc, char **argv)
 {
     int n=0;
     double **Q;
-    
-    if (argc != 2)
-        cout << "Correct usage: " << argv[0] <<" <filename>" << endl;
-    else
+    //read_qubo(n,Q);
+    cin >> n;
+    // Start of: initializing Q
+    Q = new double*[n];
+    for (int i=0; i<n; i++)
     {
-        ifstream infile( argv[1] );
-        if (infile.is_open()==0)
-            cout << "Could not open file" << endl;
-        else
-        {
-            infile >> n;
-            // Start of: initializing Q
-            Q = new double*[n];
-            for (int i=0; i<n; i++)
-            {
-                Q[i] = new double[n];
-                for (int j=0; j<n; j++)
-                    Q[i][j] = 0;
-            }
-            
-            for (int i=0; i<n; i++)
-            {
-                for(int j=0;j<n;j++)
-                    infile >> Q[i][j];
-            }
-        }
+        Q[i] = new double[n];
+        for (int j=0; j<n; j++)
+           Q[i][j] = 0;
+    }
+    for (int i=0; i<n; i++)
+    {
+      for(int j=0;j<n;j++)
+            cin >> Q[i][j];
+    }
+    if(argc > 1)
+    {
+      if(std::string(argv[1]) == "-a") find_all_sol = true;
     }
 
-    
     IloEnv   env;
     try {
         IloModel model(env);
-        
+
+        //construct objective function
         IloNumVarArray var(env);
-        
-        for (int i = 0; i < n; ++i)
-            var.add(IloNumVar(env,0,1,ILOBOOL));
-        
+        for (int i = 0; i < n; ++i) var.add(IloNumVar(env,0,1,ILOBOOL));
         IloExpr expr(env);
+
         for (int i=0; i<n; i++)
             for (int j=0; j< n; j++)
                 expr += var[i]*var[j]*Q[i][j];
-        
+
         IloObjective obj = IloMinimize(env,expr);
-        
+
+
+        //add constraints
+        //IloRangeArray con(env);
+        for (int i = 0; i < n; ++i)
+        {
+          bool reduced=true;
+          for(int j=0;j<n;j++)
+          {
+            if(Q[i][j]!=0 || Q[j][i]!=0)
+            {
+              reduced=false;
+              break;
+            }
+          }
+          if(reduced) {
+            // char buffer [10];
+            // sprintf (buffer, "c%d", i+1);
+            // con.add(IloRange(env, 0,var[i], 0,buffer));
+            model.add(var[i]<1);
+          }
+        }
+        //model.add(con);
         model.add(obj);
         IloCplex cplex(model);
-        //cplex.exportModel("lpex1.lp");
+        cplex.exportModel("qubo.lp");
+
+        //do not display any output on the screen
         cplex.setOut(env.getNullStream());
-        // Optimize the problem and obtain solution.
-        if ( !cplex.solve() ) {
-            env.error() << "Failed to optimize LP" << endl;
-            throw(-1);
+        cplex.setWarning(env.getNullStream());
+        cplex.setError(env.getNullStream());
+
+        if(find_all_sol){
+          cplex.setParam(IloCplex::SolnPoolGap,0);
+          cplex.setParam(IloCplex::SolnPoolIntensity,4);
+          cplex.setParam(IloCplex::PopulateLim,2100000000);
+          cplex.setParam(IloCplex::Param::OptimalityTarget,3);
+          if ( !cplex.populate() ) {
+              env.error() << "Failed to optimize QUBO" << endl;
+              throw(-1);
+          }
+
+          IloNumArray vals(env);
+          int numsol = cplex.getSolnPoolNsolns();
+          env.out() << "Solution status = " << cplex.getStatus() << endl;
+          int minsol=0;
+          for (int i = 0; i < numsol; i++)
+            if(minsol>cplex.getObjValue(i))
+              minsol=cplex.getObjValue(i);
+          for (int i = 0; i < numsol; i++)
+          {
+            if(cplex.getObjValue(i) == minsol){
+              env.out() <<"["<<i<< "] Solution value = " << cplex.getObjValue(i) << endl;
+              cplex.getValues(vals, var,i);
+              //env.out() << "Values = "<<endl << vals << endl;
+              env.out() <<"["<<i<< "] Values = ";
+            }
+          }
+        } else {
+          // Optimize the problem and obtain solution.
+          if ( !cplex.solve() ) {
+              env.error() << "Failed to optimize QUBO" << endl;
+              throw(-1);
+          }
+          IloNumArray vals(env);
+          env.out() << "Solution status = " << cplex.getStatus() << endl;
+      	  env.out() << "Solution value  = " << cplex.getObjValue() << endl;
+          cplex.getValues(vals, var);
+            //env.out() << "Values = "<<endl << vals << endl;
+          cout <<"Values = [ ";
+          for (int i = 0; i < n; i++)
+            cout <<(int)vals[i] <<" ";
+          cout<<"]"<<endl;
         }
-        
-        IloNumArray vals(env);
-        env.out() << "Solution status = " << cplex.getStatus() << endl;
-        env.out() << "Solution value  = " << cplex.getObjValue() << endl;
-        cplex.getValues(vals, var);
-        env.out() << "Values        = " << vals << endl;
-        //env.out() << "Reduced Costs = " << vals << endl;
     }
     catch (IloException& e) {
         cerr << "Concert exception caught: " << e << endl;
@@ -87,8 +126,9 @@ main (int argc, char **argv)
     catch (...) {
         cerr << "Unknown exception caught" << endl;
     }
-    
+
     env.end();
+
     for (int i=0; i<n; i++)
         delete [] Q[i];
     delete [] Q;
@@ -96,5 +136,19 @@ main (int argc, char **argv)
 }  // END main
 
 
-
-
+void read_qubo(int &n, double **Q) {
+  cin >> n;
+  // Start of: initializing Q
+  Q = new double*[n];
+  for (int i=0; i<n; i++)
+  {
+      Q[i] = new double[n];
+      for (int j=0; j<n; j++)
+         Q[i][j] = 0;
+  }
+  for (int i=0; i<n; i++)
+  {
+    for(int j=0;j<n;j++)
+          cin >> Q[i][j];
+  }
+}
