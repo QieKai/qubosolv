@@ -1,3 +1,8 @@
+// qubo solver takes a matrix with size as input and generates a optimal solution
+// ### Usage:
+// $./qubo < matrix.txt
+// ### To list all solution found in solution pool:
+// $./qubo -a < matrix.txt
 #include <ilcplex/ilocplex.h>
 #include <iostream>
 #include <fstream>
@@ -24,9 +29,13 @@ int main (int argc, char **argv)
 
         //construct objective function
         IloNumVarArray var(env);
-        for (int i = 0; i < n; ++i) var.add(IloNumVar(env,0,1,ILOBOOL));
+        for (int i = 0; i < n; ++i)
+        {
+          char buffer [10];
+          sprintf (buffer, "x%d", i+1);
+          var.add(IloNumVar(env,0,1,ILOBOOL,buffer));
+        }
         IloExpr expr(env);
-
         for (int i=0; i<n; i++)
             for (int j=0; j< n; j++)
                 expr += var[i]*var[j]*Q[i][j];
@@ -34,7 +43,6 @@ int main (int argc, char **argv)
         IloObjective obj = IloMinimize(env,expr);
 
         //add constraints
-        //IloRangeArray con(env);
         for (int i = 0; i < n; ++i)
         {
           bool reduced=true;
