@@ -5,33 +5,20 @@
 ILOSTLBEGIN
 
 bool find_all_sol=false;
-void read_qubo(int &n, double **Q);
+void read_qubo(int &n, double **&Q);
 
 int main (int argc, char **argv)
 {
     int n=0;
     double **Q;
-    //read_qubo(n,Q);
-    cin >> n;
-    // Start of: initializing Q
-    Q = new double*[n];
-    for (int i=0; i<n; i++)
-    {
-        Q[i] = new double[n];
-        for (int j=0; j<n; j++)
-           Q[i][j] = 0;
-    }
-    for (int i=0; i<n; i++)
-    {
-      for(int j=0;j<n;j++)
-            cin >> Q[i][j];
-    }
+    read_qubo(n,Q);
+
     if(argc > 1)
     {
       if(std::string(argv[1]) == "-a") find_all_sol = true;
     }
 
-    IloEnv   env;
+    IloEnv env;
     try {
         IloModel model(env);
 
@@ -45,7 +32,6 @@ int main (int argc, char **argv)
                 expr += var[i]*var[j]*Q[i][j];
 
         IloObjective obj = IloMinimize(env,expr);
-
 
         //add constraints
         //IloRangeArray con(env);
@@ -61,10 +47,10 @@ int main (int argc, char **argv)
             }
           }
           if(reduced) {
-            // char buffer [10];
-            // sprintf (buffer, "c%d", i+1);
-            // con.add(IloRange(env, 0,var[i], 0,buffer));
-            model.add(var[i]<1);
+            char buffer [10];
+            sprintf (buffer, "c%d", i+1);
+            model.add(IloRange(env, 0,var[i], 0,buffer));
+            //model.add(var[i]<1);
           }
         }
         //model.add(con);
@@ -100,7 +86,7 @@ int main (int argc, char **argv)
               env.out() <<"["<<i<< "] Solution value = " << cplex.getObjValue(i) << endl;
               cplex.getValues(vals, var,i);
               //env.out() << "Values = "<<endl << vals << endl;
-              env.out() <<"["<<i<< "] Values = ";
+              env.out() <<"["<<i<< "] Variables = " << vals << endl;
             }
           }
         } else {
@@ -113,11 +99,7 @@ int main (int argc, char **argv)
           env.out() << "Solution status = " << cplex.getStatus() << endl;
       	  env.out() << "Solution value  = " << cplex.getObjValue() << endl;
           cplex.getValues(vals, var);
-            //env.out() << "Values = "<<endl << vals << endl;
-          cout <<"Values = [ ";
-          for (int i = 0; i < n; i++)
-            cout <<(int)vals[i] <<" ";
-          cout<<"]"<<endl;
+          env.out() << "Variables = " << vals << endl;
         }
     }
     catch (IloException& e) {
@@ -136,7 +118,7 @@ int main (int argc, char **argv)
 }  // END main
 
 
-void read_qubo(int &n, double **Q) {
+void read_qubo(int &n, double **&Q) {
   cin >> n;
   // Start of: initializing Q
   Q = new double*[n];
